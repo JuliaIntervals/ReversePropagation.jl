@@ -8,7 +8,7 @@ Modifies the `OrderedDict` `dict`.
 """
 function cse!(dict, ex)
 
-    if istree(ex)
+    if iscall(ex)
         
         args = arguments(ex)
         op = operation(ex)

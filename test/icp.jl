@@ -42,7 +42,7 @@ end
     vars = @variables x, y
     @variables a  # parameter
 
-    ex = x^ExactReal(2) + y^ExactReal(2)
+    ex = x^exact(2) + y^exact(2)
 
     C = forward_backward_contractor(ex, vars)
     X = IntervalBox(bareinterval(-10..10), 2)
@@ -52,7 +52,7 @@ end
 
 
     # with parameter:
-    # ex = x^ExactReal(2) + a * y^ExactReal(2)
+    # ex = x^exact(2) + a * y^exact(2)
 
     # C = forward_backward_contractor(ex, vars, [a])
 
