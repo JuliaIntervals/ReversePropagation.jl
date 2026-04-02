@@ -61,12 +61,19 @@ const binary_functions = Dict(
                     :^     => :power_rev,
                     );
 
-for (f, f_rev) in binary_functions
-    # @eval rev(::typeof($f), z::Real, x::Real, y::Real) = $f_rev(z, x, y) 
-    @eval rev(::typeof($f), z, x, y) = $f_rev(z, x, y) 
+# Create individually-named symbolic functions to avoid method overwriting
+# (@register_symbolic widens typeof(f) to a single symbolic type, so all
+# binary/unary rev methods would collide if registered under the same name)
+const _rev_binary_lookup = Dict{Function,Function}()
 
-    @eval @register_symbolic rev(a::typeof($f), z, x, y) false
+for (f, f_rev) in binary_functions
+    rev_sym = Symbol(:_rev_, f)
+    @eval $rev_sym(z, x, y) = $f_rev(z, x, y)
+    @eval @register_symbolic $rev_sym(z, x, y) false
+    _rev_binary_lookup[eval(f)] = eval(rev_sym)
 end
+
+rev(f_val, z, x, y) = _rev_binary_lookup[f_val](z, x, y)
 
 
 const unary_functions = [:sqrt, :abs,
@@ -78,12 +85,17 @@ const unary_functions = [:sqrt, :abs,
             :asinh, :acosh, :atanh,
             :inv, :sign, :max, :min];
 
+const _rev_unary_lookup = Dict{Function,Function}()
+
 for f in unary_functions
     f_rev = Symbol(f, :_rev)
-    @eval rev(::typeof($f), z::Real, x::Real) = $f_rev(z, x)
-    # @eval @register_symbolic rev(a::typeof($f), z::Real, x::Real) false
-    @eval @register_symbolic rev(a::typeof($f), z, x) false
+    rev_sym = Symbol(:_rev_, f)
+    @eval $rev_sym(z, x) = $f_rev(z, x)
+    @eval @register_symbolic $rev_sym(z, x) false
+    _rev_unary_lookup[eval(f)] = eval(rev_sym)
 end
+
+rev(f_val, z, x) = _rev_unary_lookup[f_val](z, x)
 
 
 "Generate code (as Symbolics.Assignment) for forward--backward (HC4Revise) contractor"
