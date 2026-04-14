@@ -19,3 +19,12 @@ function Base.show(io::IO, ssa::SSAFunction)
     n = length(ssa.code)
     print(io, "SSAFunction($n assignments, output = $(ssa.output))")
 end
+
+function Base.show(io::IO, ::MIME"text/plain", ssa::SSAFunction)
+    n = length(ssa.code)
+    println(io, "SSAFunction with $n assignments:")
+    for eq in ssa.code
+        println(io, "  $(eq.lhs) := $(eq.rhs)")
+    end
+    print(io, "Output: $(ssa.output)")
+end

@@ -120,7 +120,7 @@ function forward_backward_code(ssa::SSAFunction, vars, params=[])
 
     code = [forward_code; constraint_code; reverse_code]
 
-    return code, final_var, constraint_var
+    return SSAFunction(code, final_var), constraint_var
 end
 
 # code, final, constraint = forward_backward_code(x^2 + a*y^2, [x, y], [a])
@@ -159,12 +159,12 @@ end
 
 "Build Julia code for forward_backward contractor from an SSAFunction"
 function forward_backward_expr(ssa::SSAFunction, vars, params=[])
-    symbolic_code, final_var, constraint_var = forward_backward_code(ssa, vars, params)
+    result_ssa, constraint_var = forward_backward_code(ssa, vars, params)
 
-    code = toexpr.(symbolic_code)
+    code = toexpr.(result_ssa.code)
     all_code = Expr(:block, code...)
 
-    return all_code, final_var, constraint_var
+    return all_code, result_ssa.output, constraint_var
 end
 
 
