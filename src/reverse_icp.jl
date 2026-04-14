@@ -116,7 +116,11 @@ function forward_backward_code(ssa::SSAFunction, vars, params=[])
     constraint_code = [Assignment(final_var, last),
                         Assignment(last, last ⊓ constraint_var)]
 
-    reverse_code = rev.(reverse(forward_code), Ref(params))
+    # Only reverse assignments that are function calls;
+    # constant/identity assignments (e.g. from gradient_code initialization)
+    # are needed in the forward pass but cannot be reversed.
+    reversible_code = filter(eq -> iscall(value(eq.rhs)), forward_code)
+    reverse_code = rev.(reverse(reversible_code), Ref(params))
 
     code = [forward_code; constraint_code; reverse_code]
 
@@ -206,41 +210,67 @@ function forward_backward_contractor(ex, vars, params=[])
     return forward_backward_contractor(ssa, vars, params)
 end
 
-# ex = x^2 + a * y^2
-# C = forward_backward_contractor(ex, vars, [a])
 
-# const CC2 = forward_backward_contractor(ex, vars, [a])
+"""
+    derivative_ssa(ex, diff_var, vars)
 
-# CC2((-10..10, -10..10), 0..1, 5)
-# @btime CC2((-10..10, -10..10), 0..1, 6)
-# @btime CC2((-10..10, -10..10), 0..1, 7)
+Build an `SSAFunction` that computes the partial derivative ∂ex/∂diff_var
+using reverse-mode AD (gradient_code).
 
+The returned SSA can be passed to `forward_backward_contractor` to create
+a contractor for a derivative constraint.
+"""
+function derivative_ssa(ex, diff_var, vars)
+    ssa = cse_equations(ex)
+    code, final, gradient_vars = gradient_code(ssa, vars)
 
-# using BenchmarkTools
+    idx = findfirst(v -> isequal(v, diff_var), vars)
+    isnothing(idx) && error("Variable $diff_var not found in vars $vars")
 
-# @btime CC((-10..10, -10..10), 0..1)
+    # The adjoint pass may produce n-ary operations (e.g. *(2, x, _b̄)).
+    # Decompose them into binary ops so rev() can handle them.
+    binarized = _binarize_ssa(code)
 
-# @code_native C((-10..10, -10..10), 0..1)
+    return SSAFunction(binarized, gradient_vars[idx])
+end
 
-# CC(IntervalBox(-10..10, 2), 0..1)
+"""
+Ensure all SSA assignments are fully decomposed into elementary (unary/binary)
+operations on atomic arguments (variables and constants, no compound subexpressions).
+This is needed because gradient_code may produce assignments like `_ā := _b̄*cos(_a)`
+which must be split into `_tmp := cos(_a); _ā := _b̄*_tmp` for `rev()` to work.
+"""
+function _binarize_ssa(code)
+    result = Assignment[]
+    for eq in code
+        rhs_val = value(eq.rhs)
+        if iscall(rhs_val) && _needs_decomposition(rhs_val)
+            # Decompose via CSE into elementary assignments
+            sub_ssa = cse_equations(eq.rhs)
+            # Add intermediate assignments, and redirect the last one
+            # to the original LHS (avoids creating an identity copy)
+            append!(result, sub_ssa.code[1:end-1])
+            push!(result, Assignment(eq.lhs, sub_ssa.code[end].rhs))
+        else
+            push!(result, eq)
+        end
+    end
+    return result
+end
 
+"Check if an expression has >2 arguments or any compound (non-atomic) arguments"
+function _needs_decomposition(ex)
+    args = arguments(ex)
+    length(args) > 2 && return true
+    return any(iscall, args)
+end
 
+"""
+    derivative_contractor(ex, diff_var, vars, params=[])
 
-# vars = @variables x, y
-# ex = 3x^2 + 4x^2 * y
-
-
-# code, final, return_tuple = forward_backward_code(vars, 3x^2 + 4x^2 * y)
-
-# expr = forward_backward_expr(vars, ex)
-
-# C = forward_backward_contractor(vars, ex)
-
-
-# using IntervalArithmetic
-
-# C( (1..2, 3..4) )
-
-# ex = x^2 + y^2
-
-# C( (-10..10, -10..10) )
+Build a forward--backward contractor for the partial derivative ∂ex/∂diff_var.
+"""
+function derivative_contractor(ex, diff_var, vars, params=[])
+    ssa = derivative_ssa(ex, diff_var, vars)
+    return forward_backward_contractor(ssa, vars, params)
+end

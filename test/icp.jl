@@ -52,6 +52,53 @@ end
     @test eq(C(IntervalBox(-10..10, -10..10), 0..1), ( (-1..1, -1..1), 0..200 ))
 end
 
+@testset "derivative_contractor" begin
+
+    vars = @variables x, y
+
+    @testset "simple polynomial" begin
+        # d/dx(x^2 + y^2) = 2x
+        ex = x^2 + y^2
+        C = derivative_contractor(ex, x, vars)
+
+        # 2x == 0 → x = 0
+        r = C(IntervalBox(-10..10, 2), interval(0, 0))
+        @test eq(r[1], (0..0, -10..10))
+
+        # 2x ∈ [-2, 2] → x ∈ [-1, 1]
+        r2 = C(IntervalBox(-10..10, 2), interval(-2, 2))
+        @test eq(r2[1], (-1..1, -10..10))
+    end
+
+    @testset "with transcendental functions" begin
+        # d/dx(sin(x*y) + x^2) = y*cos(x*y) + 2x
+        ex = sin(x*y) + x^2
+        C = derivative_contractor(ex, x, vars)
+
+        # On [-2,2]^2: contractor should run without error and contract
+        r = C(IntervalBox(-2..2, 2), interval(0, 0))
+        # x should be contracted (derivative = 0 is a strict constraint)
+        @test all(x -> diam(x) <= 4, r[1])
+    end
+
+    @testset "derivative w.r.t. second variable" begin
+        # d/dy(x^2 + y^2) = 2y
+        ex = x^2 + y^2
+        C = derivative_contractor(ex, y, vars)
+
+        # 2y == 0 → y = 0
+        r = C(IntervalBox(-10..10, 2), interval(0, 0))
+        @test eq(r[1], (-10..10, 0..0))
+    end
+
+    @testset "derivative_ssa" begin
+        ex = x^2 + y^2
+        ssa = derivative_ssa(ex, x, vars)
+        @test ssa isa SSAFunction
+        @test length(ssa.code) > 0
+    end
+end
+
 @testset "bare intervals" begin
 
     vars = @variables x, y

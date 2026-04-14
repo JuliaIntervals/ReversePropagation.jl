@@ -1,6 +1,7 @@
 module ReversePropagation
 
-export gradient, forward_backward_contractor, SSAFunction
+export gradient, forward_backward_contractor, SSAFunction,
+       derivative_ssa, derivative_contractor
 
 import Symbolics: toexpr, variable
 
