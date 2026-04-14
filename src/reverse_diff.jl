@@ -206,7 +206,7 @@ function gradient_code(ssa::SSAFunction, vars)
 
     code = [forward_code; initialization_code; reverse_code]
 
-    return SSAFunction(code, final), gradient_vars
+    return SSAFunction(code, final, (; gradient=gradient_vars))
 end
 
 
@@ -218,11 +218,11 @@ make_tuple(s::Symbol) = make_tuple([s])
 # toexpr(ex::Assignment) = toexpr(Equation(ex.lhs, ex.rhs))
 
 function gradient_expr(ex, vars)
-    result_ssa, gradient_vars = gradient_code(ex, vars)
+    result_ssa = gradient_code(ex, vars)
 
     code = Expr(:block, toexpr.(result_ssa.code)...)
 
-    return code, result_ssa.output, gradient_vars
+    return code, result_ssa.output, result_ssa.variables.gradient
 end
 
 
