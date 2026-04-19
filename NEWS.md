@@ -1,5 +1,33 @@
 # ReversePropagation.jl release notes
 
+## v0.6.0
+
+### Breaking
+
+- `ChainRules` and `ChainRulesCore` are no longer dependencies. Scalar
+  derivative rules live in an in-package table (`src/scalar_rules.jl`)
+  with `adj(f, z̄, xs...)` as the public reverse-mode interface. The
+  external behaviour of `gradient` / `forward_backward_contractor` is
+  unchanged; downstream code that called `ReversePropagation.adj` via
+  a `ChainRules.rrule`-style signature will need to adapt.
+- `sign`, `max`, `min` have been removed from the unary op registry.
+  `sign`'s derivative is distributional and has no reverse contractor;
+  `max` / `min` are binary and require interval-subgradient reverses
+  that aren't in place yet. Expressions that used these in the forward
+  pipeline will now error explicitly instead of silently building
+  contractors that can't run.
+
+### Added
+
+- Exported `binarize_ssa(ssa::SSAFunction)` — decomposes n-ary or
+  compound-argument assignments (e.g. `_ā := _b̄ * cos(_a)`) into
+  elementary unary/binary ops. Useful as a post-processing step on
+  the result of `gradient_code` before feeding into downstream
+  interval-reverse consumers.
+- Regression test that sweeps every entry in the unary/binary registries
+  and asserts that `gradient_code |> binarize_ssa` produces SSA whose
+  rhs's are all registered (reversible) operations.
+
 ## v0.5.1
 
 ### Changed

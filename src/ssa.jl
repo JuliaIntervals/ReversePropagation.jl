@@ -54,3 +54,44 @@ function Base.show(io::IO, ::MIME"text/plain", ssa::SSAFunction)
         end
     end
 end
+
+
+"""
+    binarize_ssa(ssa::SSAFunction) -> SSAFunction
+
+Decompose any n-ary or compound-argument assignments in `ssa.code` into
+elementary unary/binary operations on atomic arguments.
+
+Useful as a post-processing step on the output of `gradient_code`: the
+reverse-mode adjoint pass can produce assignments like
+`_ā := _b̄ * cos(_a)` or `_t := *(2, x, _ā)`, which downstream consumers
+(e.g. an interval reverse-propagation pipeline) need split into
+elementary ops — `_tmp := cos(_a); _ā := _b̄ * _tmp` etc.
+
+Preserves `ssa.output` and `ssa.variables`; only rewrites `ssa.code`.
+"""
+function binarize_ssa(ssa::SSAFunction)
+    binarized = _binarize_ssa(ssa.code)
+    return SSAFunction(binarized, ssa.output, ssa.variables)
+end
+
+function _binarize_ssa(code)
+    result = Assignment[]
+    for eq in code
+        rhs_val = Symbolics.value(eq.rhs)
+        if SymbolicUtils.iscall(rhs_val) && _needs_decomposition(rhs_val)
+            sub_ssa = cse_equations(eq.rhs)
+            append!(result, sub_ssa.code[1:end-1])
+            push!(result, Assignment(eq.lhs, sub_ssa.code[end].rhs))
+        else
+            push!(result, eq)
+        end
+    end
+    return result
+end
+
+function _needs_decomposition(ex)
+    args = SymbolicUtils.arguments(ex)
+    length(args) > 2 && return true
+    return any(SymbolicUtils.iscall, args)
+end
