@@ -83,7 +83,7 @@ const unary_functions = [:sqrt, :abs,
             :asin, :acos, :atan,
             :sinh, :cosh, :tanh,
             :asinh, :acosh, :atanh,
-            :inv, :sign, :max, :min];
+            :inv];
 
 const _rev_unary_lookup = Dict{Function,Function}()
 
@@ -96,6 +96,21 @@ for f in unary_functions
 end
 
 rev(f_val, z, x) = _rev_unary_lookup[f_val](z, x)
+
+
+# When the gradient SSA is routed through `forward_backward_contractor`
+# (e.g. `d/dx(x+y) = 1`), the output variable can be a plain `Real` seed
+# left by `gradient_code` that then flows into `last ⊓ constraint_var`.
+# Fill in the missing methods so the intersect promotes the scalar to the
+# same interval flavour as the constraint.
+IntervalArithmetic.intersect_interval(x::Real, y::Interval{T}) where {T} =
+    intersect_interval(interval(T, x), y)
+IntervalArithmetic.intersect_interval(x::Interval{T}, y::Real) where {T} =
+    intersect_interval(x, interval(T, y))
+IntervalArithmetic.intersect_interval(x::Real, y::BareInterval{T}) where {T} =
+    intersect_interval(bareinterval(T, x), y)
+IntervalArithmetic.intersect_interval(x::BareInterval{T}, y::Real) where {T} =
+    intersect_interval(x, bareinterval(T, y))
 
 
 "Generate code (as Symbolics.Assignment) for forward--backward (HC4Revise) contractor from a symbolic expression"
@@ -222,16 +237,36 @@ a contractor for a derivative constraint.
 """
 function derivative_ssa(ex, diff_var, vars)
     ssa = cse_equations(ex)
-    code, final, gradient_vars = gradient_code(ssa, vars)
+    grad_ssa = gradient_code(ssa, vars)
 
     idx = findfirst(v -> isequal(v, diff_var), vars)
     isnothing(idx) && error("Variable $diff_var not found in vars $vars")
 
     # The adjoint pass may produce n-ary operations (e.g. *(2, x, _b̄)).
     # Decompose them into binary ops so rev() can handle them.
-    binarized = _binarize_ssa(code)
+    binarized = _binarize_ssa(grad_ssa.code)
 
-    return SSAFunction(binarized, gradient_vars[idx])
+    # Promote the integer seed from `gradient_code` (`_ā := 1`, any
+    # `unassigned := 0`) to intervals. Without this, identity-propagating
+    # gradients such as `d/dx(x-y) = 1` leave behind `Int`-valued entries
+    # that cause the reverse pass (e.g. `mul_rev`) to recurse forever via
+    # its `mul_rev(a,b,c) = mul_rev(promote(a,b,c)...)` fallback.
+    promoted = _promote_integer_seeds(binarized)
+
+    return SSAFunction(promoted, grad_ssa.variables.gradient[idx])
+end
+
+function _promote_integer_seeds(code)
+    result = Assignment[]
+    for eq in code
+        rhs_val = Symbolics.value(eq.rhs)
+        if rhs_val isa Integer
+            push!(result, Assignment(eq.lhs, interval(rhs_val)))
+        else
+            push!(result, eq)
+        end
+    end
+    return result
 end
 
 """

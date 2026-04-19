@@ -6,6 +6,20 @@
 
 @scalar_rule(^(x::Num, n::Integer), (n==1 ? 1 : n==2 ? 2x : n*x^(n-1), ZeroTangent()))
 
+# The default ChainRules rule for abs uses sign(x), which isn't reversible
+# in this package's op set. Replace with x/abs(x), whose ops (/, abs) both
+# have reverse contractors.
+@scalar_rule(abs(x::Num), x / abs(x))
+
+# Default ChainRules rules for exp2/exp10/log2/log10 reference
+# `IrrationalConstants.Logtwo`/`Logten`, which IntervalArithmetic only
+# supports for `Base.MathConstants` irrationals. Replace with plain
+# Float64 log values so the generated SSA is interval-friendly.
+@scalar_rule(exp2(x::Num),  exp2(x)  * log(2.0))
+@scalar_rule(exp10(x::Num), exp10(x) * log(10.0))
+@scalar_rule(log2(x::Num),  inv(x * log(2.0)))
+@scalar_rule(log10(x::Num), inv(x * log(10.0)))
+
 adj(f, z̄::Num, x::Num) = (rrule(f, x)[2](z̄))[2]
 adj(f, z̄, x) = adj(f, Num(z̄), Num(x))
 

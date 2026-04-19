@@ -97,6 +97,27 @@ end
         @test ssa isa SSAFunction
         @test length(ssa.code) > 0
     end
+
+    @testset "every registered op builds and runs" begin
+        # For every function in the binary/unary registries, build a
+        # `derivative_contractor` and invoke it on a safe input. Catches
+        # regressions where a registered op has no reverse, or where
+        # ChainRules produces a non-reversible adjoint.
+        safe = interval(0.5, 1.0)  # stays inside the domain of every listed op
+        X = IntervalBox(safe, safe)
+
+        for (op, _) in ReversePropagation.binary_functions
+            f = eval(op)
+            C = derivative_contractor(f(x, y), x, vars)
+            @test C(X, interval(-1e6, 1e6)) isa Tuple
+        end
+
+        for op in ReversePropagation.unary_functions
+            f = eval(op)
+            C = derivative_contractor(f(x), x, [x])
+            @test C(IntervalBox(safe), interval(-1e6, 1e6)) isa Tuple
+        end
+    end
 end
 
 @testset "bare intervals" begin
