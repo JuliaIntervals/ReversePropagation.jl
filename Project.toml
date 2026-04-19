@@ -1,7 +1,7 @@
 name = "ReversePropagation"
 uuid = "527681c1-8309-4d3f-8790-caf822a419ba"
 authors = ["David P. Sanders <dpsanders@gmail.com> and contributors"]
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
@@ -9,6 +9,7 @@ ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
 IntervalContractors = "15111844-de3b-5229-b4ba-526f2f385dc9"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+RuntimeGeneratedFunctions = "7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
 SymbolicUtils = "d1185830-fcd6-423d-90d6-eec64667417b"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
@@ -18,6 +19,7 @@ ChainRulesCore = "1"
 IntervalArithmetic = "1"
 IntervalContractors = "0.6"
 OrderedCollections = "1"
+RuntimeGeneratedFunctions = "0.5"
 SymbolicUtils = "1 - 4"
 Symbolics = "6 - 7"
 julia = "1.10"

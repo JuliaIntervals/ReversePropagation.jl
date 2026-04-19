@@ -234,14 +234,15 @@ function gradient(ex::Num, vars)
     final = toexpr(final_var)
     gradient = toexpr(Symbolics.MakeTuple(gradient_vars))
 
-    full_code = quote
-        ($input_vars, ) -> begin
+    full_code = :(
+        (__args,) -> begin
+            $input_vars = __args
             $code
             return $(final), $(gradient)
         end
-    end
+    )
 
-    return eval(full_code)
+    return @RuntimeGeneratedFunction(full_code)
 
 end
 

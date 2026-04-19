@@ -1,5 +1,20 @@
 # ReversePropagation.jl release notes
 
+## v0.5.1
+
+### Changed
+
+- Runtime code generation in `gradient` and `forward_backward_contractor`
+  now uses `@RuntimeGeneratedFunction` instead of `eval`. The user-facing
+  calling convention is unchanged, but callers can now build and invoke a
+  generated function within the same dynamic extent without hitting Julia
+  world-age errors. Build-time is also significantly faster (4–15× on the
+  benchmarked cases); steady-state call cost is unchanged.
+
+### Added
+
+- `RuntimeGeneratedFunctions` as a direct dependency.
+
 ## v0.5.0
 
 ### Breaking

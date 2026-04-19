@@ -178,24 +178,27 @@ function forward_backward_contractor(ssa::SSAFunction, vars, params=[])
     if !isempty(params)
         params_tuple = toexpr(Symbolics.MakeTuple(params))
 
-        function_code =
-            quote
-                ($input_vars, $constraint, $params_tuple) -> begin
-                    $code
-                    return $input_vars, $(final)
-                end
+        function_code = :(
+            (__inputs, __constraint, __params) -> begin
+                $input_vars = __inputs
+                $constraint = __constraint
+                $params_tuple = __params
+                $code
+                return $input_vars, $(final)
             end
+        )
     else
-        function_code =
-            quote
-                ($input_vars, $constraint) -> begin
-                    $code
-                    return $input_vars, $(final)
-                end
+        function_code = :(
+            (__inputs, __constraint) -> begin
+                $input_vars = __inputs
+                $constraint = __constraint
+                $code
+                return $input_vars, $(final)
             end
+        )
     end
 
-    return eval(function_code)
+    return @RuntimeGeneratedFunction(function_code)
 end
 
 function forward_backward_contractor(ex, vars, params=[])

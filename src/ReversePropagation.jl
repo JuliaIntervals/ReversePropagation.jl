@@ -26,6 +26,9 @@ using OrderedCollections
 
 using ChainRulesCore, ChainRules
 
+using RuntimeGeneratedFunctions
+RuntimeGeneratedFunctions.init(@__MODULE__)
+
 
 
 # struct Assignment
