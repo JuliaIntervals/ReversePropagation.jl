@@ -1,7 +1,7 @@
 name = "ReversePropagation"
 uuid = "527681c1-8309-4d3f-8790-caf822a419ba"
 authors = ["David P. Sanders <dpsanders@gmail.com> and contributors"]
-version = "0.4.2"
+version = "0.5.0"
 
 [deps]
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
