@@ -14,10 +14,14 @@
 - `max` / `min` moved from the unary to the binary op registry (they
   are genuinely binary — the previous unary listing was a bug). They
   are now fully supported end-to-end, with subgradient-aware rules.
-- `sign` stays in the reversibility registry (so interval reverse
-  propagation can still traverse it) but is no longer given a scalar
-  derivative rule. `gradient(sign(x), [x])` now errors explicitly
-  rather than silently returning a distributional derivative.
+- `sign` is no longer in the reversibility registry either. Its
+  derivative is distributional at 0 and zero elsewhere, so it has no
+  well-defined place in a pipeline whose whole point is symbolic
+  differentiation. Expressions containing `sign(...)` now fail at
+  gradient/contractor build time with a clear error rather than
+  silently producing a mathematically meaningless result.
+  `_abs_subgrad`'s `Real`-input branch still calls `Base.sign` at
+  runtime internally, but it never appears in any SSA.
 
 ### Added
 

@@ -63,7 +63,10 @@ function cse_equations(ex)
     dict, final = cse(ex)
 
     code = [Assignment(rhs, lhs) for (lhs, rhs) in pairs(dict)]
-    return SSAFunction(code, final)
+    # `cse!` may hand back either a freshly-made `Num` variable or, in the
+    # base case, the input expression unchanged (a `BasicSymbolic` or a
+    # bare `Real`). Normalise to `Num` at the SSAFunction boundary.
+    return SSAFunction(code, Num(final))
 end
 
 

@@ -28,10 +28,9 @@ end
         @test !(:min in unary_functions)
         @test :max in keys(binary_functions)
         @test :min in keys(binary_functions)
-        # `sign` stays in the unary reversibility registry (so interval
-        # reverse propagation can pass through it), but is NOT given a
-        # scalar rule — see `scalar_rules.jl`.
-        @test :sign in unary_functions
+        # `sign` is fully excluded: distributional derivative at 0, so it
+        # is not an allowed op in user expressions.
+        @test !(:sign in unary_functions)
         @test_throws ErrorException ReversePropagation.unary_rule(sign, 0.0)
     end
 
@@ -60,12 +59,7 @@ end
         # `DIFF_HELPERS`.
         @variables x y
 
-        # `sign` is intentionally in the reversibility registry but not
-        # differentiable, so it's excluded from this sweep.
-        undifferentiable = Set([:sign])
-
         for f_sym in unary_functions
-            f_sym in undifferentiable && continue
             f = eval(f_sym)
             ssa = cse_equations(f(x))
             grad = binarize_ssa(gradient_code(ssa, [x]))

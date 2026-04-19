@@ -13,7 +13,7 @@ and can be passed to `forward_backward_code` or `gradient_code` as input.
 """
 struct SSAFunction
     code::Vector{Assignment}
-    output
+    output::Num
     variables::NamedTuple
 end
 
