@@ -98,28 +98,29 @@ end
 rev(f_val, z, x) = _rev_unary_lookup[f_val](z, x)
 
 
-"Generate code (as Symbolics.Assignment) for forward--backward (HC4Revise) contractor"
+"Generate code (as Symbolics.Assignment) for forward--backward (HC4Revise) contractor from a symbolic expression"
 function forward_backward_code(ex, vars, params=[])
+    ssa = cse_equations(ex)
+    return forward_backward_code(ssa, vars, params)
+end
+
+"Generate forward--backward contractor code from an SSAFunction"
+function forward_backward_code(ssa::SSAFunction, vars, params=[])
 
     final_var = make_variable(:value)  # to record the output of running the forward interval function
     constraint_var = make_variable(:constraint)   # symbolic constraint variable
 
-    forward_code, last = cse_equations(ex)
-
-    # @show forward_code
-
-
-    # @show constraint_var, final_var
+    forward_code = ssa.code
+    last = ssa.output
 
     constraint_code = [Assignment(final_var, last),
                         Assignment(last, last ⊓ constraint_var)]
 
     reverse_code = rev.(reverse(forward_code), Ref(params))
 
-
     code = [forward_code; constraint_code; reverse_code]
 
-    return code, final_var, constraint_var
+    return SSAFunction(code, final_var, (; constraint=constraint_var))
 end
 
 # code, final, constraint = forward_backward_code(x^2 + a*y^2, [x, y], [a])
@@ -150,30 +151,28 @@ Symbolics.toexpr(t::Tuple) = Symbolics.toexpr(Symbolics.MakeTuple(t))
 #     return code, final, return_tuple
 # end
 
-"Build Julia code for forward_backward contractor"
+"Build Julia code for forward_backward contractor from a symbolic expression"
 function forward_backward_expr(ex, vars, params=[])
+    ssa = cse_equations(ex)
+    return forward_backward_expr(ssa, vars, params)
+end
 
-    symbolic_code, final_var, constraint_var = forward_backward_code(ex, vars, params)
+"Build Julia code for forward_backward contractor from an SSAFunction"
+function forward_backward_expr(ssa::SSAFunction, vars, params=[])
+    result_ssa = forward_backward_code(ssa, vars, params)
 
-    # @show symbolic_code
-
-    code = toexpr.(symbolic_code)
+    code = toexpr.(result_ssa.code)
     all_code = Expr(:block, code...)
 
-    return all_code, final_var, constraint_var
+    return all_code, result_ssa.output, result_ssa.variables.constraint
 end
 
 
-# forward_backward_expr(ex, vars, [a])
-
-
-function forward_backward_contractor(ex, vars, params=[])
-
-    code, final_var, constraint_var = forward_backward_expr(ex, vars, params)
+function forward_backward_contractor(ssa::SSAFunction, vars, params=[])
+    code, final_var, constraint_var = forward_backward_expr(ssa, vars, params)
 
     input_vars = toexpr(Symbolics.MakeTuple(vars))
     final = toexpr(final_var)
-
     constraint = toexpr(constraint_var)
 
     if !isempty(params)
@@ -186,9 +185,7 @@ function forward_backward_contractor(ex, vars, params=[])
                     return $input_vars, $(final)
                 end
             end
-
     else
-
         function_code =
             quote
                 ($input_vars, $constraint) -> begin
@@ -196,12 +193,14 @@ function forward_backward_contractor(ex, vars, params=[])
                     return $input_vars, $(final)
                 end
             end
-
     end
 
     return eval(function_code)
+end
 
-
+function forward_backward_contractor(ex, vars, params=[])
+    ssa = cse_equations(ex)
+    return forward_backward_contractor(ssa, vars, params)
 end
 
 # ex = x^2 + a * y^2

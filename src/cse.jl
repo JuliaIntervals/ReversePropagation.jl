@@ -58,11 +58,12 @@ function cse(ex)
     return dict, final 
 end
 
-"Version of CSE returning a vector of equations"
-function cse_equations(ex) 
-    dict, final = cse(ex) 
+"CSE returning an SSAFunction"
+function cse_equations(ex)
+    dict, final = cse(ex)
 
-    return [Assignment(rhs, lhs) for (lhs, rhs) in pairs(dict)], final
+    code = [Assignment(rhs, lhs) for (lhs, rhs) in pairs(dict)]
+    return SSAFunction(code, final)
 end
 
 

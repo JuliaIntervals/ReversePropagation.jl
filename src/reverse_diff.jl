@@ -189,20 +189,24 @@ Return code for forward and reverse pass, as a vector of Assignments.
 `gradient_vars` are the output variables from the reverse pass.
 """
 function gradient_code(ex, vars)
+    ssa = cse_equations(ex)
+    return gradient_code(ssa, vars)
+end
 
-    forward_code, final = cse_equations(ex)
-    # reverse_code, gradient_vars = reverse_pass(vars, forward_code, final)
+function gradient_code(ssa::SSAFunction, vars)
+    forward_code = ssa.code
+    final = ssa.output
 
     reverse_code, gradient_vars, assigned = simple_reverse_pass(vars, forward_code)
 
-    initialization_code = [Assignment(bar(final), 1)]  # need typed 1 and 0?
+    initialization_code = [Assignment(bar(final), 1)]
 
     unassigned = setdiff(gradient_vars, assigned)
     append!(initialization_code, [Assignment(var, 0) for var in unassigned])
 
     code = [forward_code; initialization_code; reverse_code]
 
-    return code, final, gradient_vars
+    return SSAFunction(code, final, (; gradient=gradient_vars))
 end
 
 
@@ -214,11 +218,11 @@ make_tuple(s::Symbol) = make_tuple([s])
 # toexpr(ex::Assignment) = toexpr(Equation(ex.lhs, ex.rhs))
 
 function gradient_expr(ex, vars)
-    symbolic_code, final, gradient_vars = gradient_code(ex, vars)
+    result_ssa = gradient_code(ex, vars)
 
-    code = Expr(:block, toexpr.(symbolic_code)...)
+    code = Expr(:block, toexpr.(result_ssa.code)...)
 
-    return code, final, gradient_vars
+    return code, result_ssa.output, result_ssa.variables.gradient
 end
 
 

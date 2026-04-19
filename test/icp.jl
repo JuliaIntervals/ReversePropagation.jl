@@ -37,6 +37,21 @@ end
     @test eq(C(IntervalBox(-10..10, -10..10), 0..1, 1..1), ( (-1..1, -1..1), 0..200 ))
 end
 
+@testset "SSAFunction with forward_backward_contractor" begin
+
+    vars = @variables x, y
+
+    ex = x^2 + y^2
+
+    # Build SSAFunction manually via cse_equations, then pass to forward_backward_contractor
+    ssa = ReversePropagation.cse_equations(ex)
+    @test ssa isa SSAFunction
+    @test length(ssa.code) > 0
+
+    C = forward_backward_contractor(ssa, vars)
+    @test eq(C(IntervalBox(-10..10, -10..10), 0..1), ( (-1..1, -1..1), 0..200 ))
+end
+
 @testset "bare intervals" begin
 
     vars = @variables x, y

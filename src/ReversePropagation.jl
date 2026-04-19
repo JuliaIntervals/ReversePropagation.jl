@@ -1,6 +1,6 @@
 module ReversePropagation
 
-export gradient, forward_backward_contractor
+export gradient, forward_backward_contractor, SSAFunction
 
 import Symbolics: toexpr, variable
 
@@ -10,7 +10,7 @@ using SymbolicUtils.Rewriters
 
 using Symbolics
 using Symbolics: value,
-                istree, operation, arguments,
+                iscall, operation, arguments,
                 Assignment
 
 using IntervalContractors
@@ -36,6 +36,7 @@ using ChainRulesCore, ChainRules
 # Base.show(io::IO, eq::Assignment) = print(io, lhs(eq), " := ", rhs(eq))
 
 include("make_variable.jl")
+include("ssa.jl")
 include("chain_rules_interface.jl")
 include("cse.jl")
 include("reverse_diff.jl")
