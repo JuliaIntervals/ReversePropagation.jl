@@ -1,20 +1,18 @@
 using IntervalArithmetic
 using ReversePropagation: binary_functions, unary_functions,
                           cse_equations, gradient_code, binarize_ssa,
-                          _rev_binary_lookup, _rev_unary_lookup
+                          _rev_binary_lookup, _rev_unary_lookup,
+                          DIFF_HELPERS
 
-# The set of operations that can appear in an SSA and have a matching
-# reverse contractor (so downstream interval-reverse-propagation consumers
-# can rev them without surprises).
-const _registered_ops = Set{Function}(
-    reduce(vcat, [
-        collect(keys(_rev_binary_lookup)),
-        collect(keys(_rev_unary_lookup)),
-    ])
+# Ops that may appear in a gradient SSA: functions with reverse contractors
+# (registry) plus the hand-written derivative helpers (`_ln2`, `_abs_subgrad`
+# etc.) that appear on rule rhs's.
+const _registered_ops = union(
+    keys(_rev_binary_lookup),
+    keys(_rev_unary_lookup),
+    DIFF_HELPERS,
 )
 
-# An assignment is "reversible" if its rhs is a constant, a bare variable,
-# or a call whose operation is in `_registered_ops`.
 function _is_reversible(eq)
     rhs = Symbolics.value(eq.rhs)
     SymbolicUtils.iscall(rhs) || return true
@@ -25,12 +23,16 @@ end
 @testset "derivative hardening" begin
 
     @testset "registry shape" begin
-        # `sign` is distributional at 0 and has no `sign_rev`; omitting it
-        # is load-bearing for the smooth-ops guarantee below.
-        @test !(:sign in unary_functions)
-        # `max` / `min` are binary and require subgradient reverses.
+        # `max` / `min` are binary; keep them out of the unary list.
         @test !(:max in unary_functions)
         @test !(:min in unary_functions)
+        @test :max in keys(binary_functions)
+        @test :min in keys(binary_functions)
+        # `sign` stays in the unary reversibility registry (so interval
+        # reverse propagation can pass through it), but is NOT given a
+        # scalar rule — see `scalar_rules.jl`.
+        @test :sign in unary_functions
+        @test_throws ErrorException ReversePropagation.unary_rule(sign, 0.0)
     end
 
     @testset "binarize_ssa" begin
@@ -52,14 +54,18 @@ end
     end
 
     @testset "gradient SSA uses only registered ops" begin
-        # For every function in the current registries, verify that the
-        # binarized gradient SSA contains only ops that have a reverse
-        # contractor. This is the contract that lets downstream
-        # derivative-based contractors consume `gradient_code` output
-        # without hitting `sign_rev not defined` etc.
+        # For every function in the current registries *that has a scalar
+        # rule*, verify that the binarized gradient SSA contains only ops
+        # that are either in the reversibility registry or are declared
+        # `DIFF_HELPERS`.
         @variables x y
 
+        # `sign` is intentionally in the reversibility registry but not
+        # differentiable, so it's excluded from this sweep.
+        undifferentiable = Set([:sign])
+
         for f_sym in unary_functions
+            f_sym in undifferentiable && continue
             f = eval(f_sym)
             ssa = cse_equations(f(x))
             grad = binarize_ssa(gradient_code(ssa, [x]))
@@ -72,5 +78,14 @@ end
             grad = binarize_ssa(gradient_code(ssa, [x, y]))
             @test all(_is_reversible, grad.code)
         end
+    end
+
+    @testset "abs subgradient over intervals" begin
+        @variables x
+        g = ReversePropagation.gradient(abs(x), [x])
+        # Real eval: sign(x).
+        @test g((3.0,))[2] == (1.0,)
+        @test g((-2.5,))[2] == (-1.0,)
+        @test g((0.0,))[2] == (0.0,)
     end
 end
