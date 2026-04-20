@@ -18,18 +18,28 @@ end
 
 "Tangent assignment for one forward assignment `eq`."
 function tangent_eq(eq::Assignment)
-    vs = args(eq)
     lhs_dot = dotted(lhs(eq))
-    if length(vs) == 1
-        dfdx = unary_rule(op(eq), vs[1])
-        rhs = dfdx * dotted(vs[1])
-    elseif length(vs) == 2
-        x, y = vs
-        dfdx, dfdy = binary_rule(op(eq), x, y)
-        rhs = dfdx * dotted(x) + dfdy * dotted(y)
+    rhs_val = Symbolics.value(eq.rhs)
+
+    if SymbolicUtils.iscall(rhs_val)
+        vs = args(eq)
+        if length(vs) == 1
+            dfdx = unary_rule(op(eq), vs[1])
+            rhs = dfdx * dotted(vs[1])
+        elseif length(vs) == 2
+            x, y = vs
+            dfdx, dfdy = binary_rule(op(eq), x, y)
+            rhs = dfdx * dotted(x) + dfdy * dotted(y)
+        else
+            error("tangent_eq: unsupported arity $(length(vs))")
+        end
     else
-        error("tangent_eq: unsupported arity $(length(vs))")
+        # Non-call rhs: a bare variable is propagated through (`_ā := _c̄`
+        # becomes `_ā̇ := _c̄̇`); a bare constant has tangent 0. `dotted`
+        # handles both dispatches.
+        rhs = dotted(eq.rhs)
     end
+
     return Assignment(lhs_dot, rhs)
 end
 

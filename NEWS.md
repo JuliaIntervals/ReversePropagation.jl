@@ -1,5 +1,24 @@
 # ReversePropagation.jl release notes
 
+## v0.8.0
+
+### Added
+
+- `hessian(ex, vars)` — compiled function returning `(value, gradient,
+  Hessian)`. Built by forward-over-reverse: one reverse-mode pass for
+  the gradient SSA, a forward-mode (tangent) pass attached on top, and
+  evaluated at the `n` unit vectors at runtime to assemble the full
+  `n × n` Hessian matrix. Reuses the same scalar rule table as
+  `gradient` and `tangent`.
+
+### Fixed
+
+- `tangent_eq` now handles non-call assignments (bare-variable identity
+  copies and bare-constant seeds) that appear naturally in the output
+  of `gradient_code`. Previously it assumed every rhs was a function
+  call; that assumption held for `cse_equations(ex)` output but failed
+  as soon as a gradient SSA was used as an input to forward-mode AD.
+
 ## v0.7.0
 
 ### Added

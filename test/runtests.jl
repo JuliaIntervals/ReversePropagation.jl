@@ -8,6 +8,7 @@ using Test
     include("icp.jl")
     include("hardening.jl")
     include("tangent.jl")
+    include("hessian.jl")
 
 end
 
