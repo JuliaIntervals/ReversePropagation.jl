@@ -1,6 +1,6 @@
 module ReversePropagation
 
-export gradient, tangent, forward_backward_contractor, SSAFunction, binarize_ssa
+export gradient, tangent, hessian, forward_backward_contractor, SSAFunction, binarize_ssa
 
 import Symbolics: toexpr, variable
 
@@ -42,6 +42,7 @@ include("scalar_rules.jl")
 include("cse.jl")
 include("reverse_diff.jl")
 include("forward_diff.jl")
+include("hessian.jl")
 include("reverse_icp.jl")
 
 end
