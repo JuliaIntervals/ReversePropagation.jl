@@ -42,6 +42,12 @@
   registries and asserts that `gradient_code |> binarize_ssa` produces
   SSA whose rhs's are all in the reversibility registry or the set of
   declared derivative-rule helpers (`DIFF_HELPERS`).
+- Docstring table at the top of `scalar_rules.jl` listing functions
+  with restricted forward-mode domains (`sqrt`, `log`, `asin`, etc.)
+  and where their derivatives blow up. Behaviour at those boundaries
+  is inherited from `IntervalArithmetic.jl` — rigorous but widened to
+  unbounded intervals — and intentionally not special-cased in the
+  rule table.
 
 ## v0.5.1
 

@@ -14,6 +14,30 @@ ordinary derivatives for plain `Real`. The rules for
 `exp2` / `exp10` / `log2` / `log10` use a type-preserving `_ln2` / `_ln10`
 helper so `log(2)` and `log(10)` are computed rigorously in the interval
 flavour of the input rather than snapped to a `Float64` literal.
+
+# Domain restrictions
+
+Several rules have a restricted forward-mode domain, and a derivative that
+blows up at the boundary. Rigour is inherited from `IntervalArithmetic.jl`
+— domain violations on interval inputs return an `NaI` or a widened
+enclosure (e.g. `inv([−1, 1]) = [−∞, ∞]`) — but the results near a
+boundary are still *correct*, just unbounded. Users evaluating a gradient
+over an interval that touches a boundary should expect this:
+
+| Function                   | Domain          | Derivative blows up at |
+| -------------------------- | --------------- | ---------------------- |
+| `sqrt(x)`                  | `x ≥ 0`         | `x = 0`                |
+| `log(x)`, `log2`, `log10`  | `x > 0`         | `x → 0⁺`               |
+| `log1p(x)`                 | `x > -1`        | `x → -1⁺`              |
+| `inv(x)`, `/(a, b)`        | `x ≠ 0`, `b ≠ 0`| at 0                   |
+| `asin(x)`, `acos(x)`       | `-1 ≤ x ≤ 1`    | `x = ±1`               |
+| `acosh(x)`                 | `x ≥ 1`         | `x = 1`                |
+| `atanh(x)`                 | `-1 < x < 1`    | `x = ±1`               |
+| `tan(x)`                   | `x ≠ π/2 + kπ`  | same (forward too)     |
+| `^(a, b)`                  | `a > 0` for `log(a)` | `a ≤ 0`           |
+
+`abs`, `max`, `min` are *not* in this list: they are defined everywhere
+and the kink is handled by the subgradient rules above.
 """
 
 
