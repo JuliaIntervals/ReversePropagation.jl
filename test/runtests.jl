@@ -7,6 +7,7 @@ using Test
     include("gradient.jl")
     include("icp.jl")
     include("hardening.jl")
+    include("tangent.jl")
 
 end
 

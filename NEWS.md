@@ -1,5 +1,20 @@
 # ReversePropagation.jl release notes
 
+## v0.7.0
+
+### Added
+
+- Forward-mode automatic differentiation via the same scalar rule table
+  used for reverse-mode. Two new entry points:
+  - `tangent_code(ssa_or_expr, vars)` — appends one tangent assignment
+    per forward assignment, surfacing `input_tangents` and
+    `output_tangent` in the returned `SSAFunction.variables`.
+  - `tangent(ex, vars)` — compiles a callable
+    `(__inputs, __tangents) -> (value, directional_derivative)`.
+- The directional derivative `t((x,y), (1,0))` matches the first
+  component of `gradient((x,y))`; `t((x,y), dir)` computes the full
+  Gateaux derivative along `dir`.
+
 ## v0.6.0
 
 ### Breaking
