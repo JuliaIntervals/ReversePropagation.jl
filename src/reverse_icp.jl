@@ -59,6 +59,8 @@ const binary_functions = Dict(
                     :*     => :mul_rev,
                     :/     => :div_rev,
                     :^     => :power_rev,
+                    :max   => :max_rev,
+                    :min   => :min_rev,
                     );
 
 # Create individually-named symbolic functions to avoid method overwriting
@@ -76,6 +78,12 @@ end
 rev(f_val, z, x, y) = _rev_binary_lookup[f_val](z, x, y)
 
 
+# `sign` is intentionally excluded from the registry: its derivative is
+# distributional (infinite at 0, zero elsewhere), so we do not want users
+# writing `sign(...)` in expressions that will be differentiated. It *can*
+# still surface at runtime inside `_abs_subgrad` for Real inputs, but in
+# that path it is never part of the SSA — just a Julia function called
+# during the generated function's execution.
 const unary_functions = [:sqrt, :abs,
             :exp, :exp2, :exp10, :expm1,
             :log, :log2, :log10, :log1p,
@@ -83,7 +91,7 @@ const unary_functions = [:sqrt, :abs,
             :asin, :acos, :atan,
             :sinh, :cosh, :tanh,
             :asinh, :acosh, :atanh,
-            :inv, :sign, :max, :min];
+            :inv];
 
 const _rev_unary_lookup = Dict{Function,Function}()
 

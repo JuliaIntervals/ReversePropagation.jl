@@ -1,6 +1,6 @@
 module ReversePropagation
 
-export gradient, forward_backward_contractor, SSAFunction
+export gradient, forward_backward_contractor, SSAFunction, binarize_ssa
 
 import Symbolics: toexpr, variable
 
@@ -24,8 +24,6 @@ import IntervalArithmetic.Symbols: ⊓, ⊔
 
 using OrderedCollections
 
-using ChainRulesCore, ChainRules
-
 using RuntimeGeneratedFunctions
 RuntimeGeneratedFunctions.init(@__MODULE__)
 
@@ -40,7 +38,7 @@ RuntimeGeneratedFunctions.init(@__MODULE__)
 
 include("make_variable.jl")
 include("ssa.jl")
-include("chain_rules_interface.jl")
+include("scalar_rules.jl")
 include("cse.jl")
 include("reverse_diff.jl")
 include("reverse_icp.jl")
