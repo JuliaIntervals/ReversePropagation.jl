@@ -226,9 +226,9 @@ function gradient(ex::Num, vars)
 
     code, final_var, gradient_vars = gradient_expr(ex, vars)
 
-    input_vars = toexpr(Symbolics.MakeTuple(vars))
+    input_vars = toexpr(MakeTuple(vars))
     final = toexpr(final_var)
-    gradient = toexpr(Symbolics.MakeTuple(gradient_vars))
+    gradient = toexpr(MakeTuple(gradient_vars))
 
     full_code = quote
         ($input_vars, ) -> begin

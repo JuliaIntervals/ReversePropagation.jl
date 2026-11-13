@@ -38,7 +38,7 @@ function rev(eq::Assignment, params)
 
     reverse = rev(op(eq), lhs(eq), vars...)
 
-    return Assignment(Symbolics.MakeTuple(return_vars), reverse)
+    return Assignment(MakeTuple(return_vars), reverse)
 
 end
 
@@ -126,7 +126,7 @@ end
 
 # code
 
-Symbolics.toexpr(t::Tuple) = Symbolics.toexpr(Symbolics.MakeTuple(t))
+Symbolics.toexpr(t::Tuple) = Symbolics.toexpr(MakeTuple(t))
 
 # vars = @variables x, y
 
@@ -171,13 +171,13 @@ function forward_backward_contractor(ex, vars, params=[])
 
     code, final_var, constraint_var = forward_backward_expr(ex, vars, params)
 
-    input_vars = toexpr(Symbolics.MakeTuple(vars))
+    input_vars = toexpr(MakeTuple(vars))
     final = toexpr(final_var)
 
     constraint = toexpr(constraint_var)
 
     if !isempty(params)
-        params_tuple = toexpr(Symbolics.MakeTuple(params))
+        params_tuple = toexpr(MakeTuple(params))
 
         function_code =
             quote
