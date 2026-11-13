@@ -7,6 +7,7 @@ import Symbolics: toexpr, variable
 using SymbolicUtils
 using SymbolicUtils: Sym, Term
 using SymbolicUtils.Rewriters
+using SymbolicUtils.Code: MakeTuple
 
 using Symbolics
 using Symbolics: value,
